@@ -484,21 +484,65 @@
     body{overflow:auto;height:auto;min-height:100dvh}
     .layout{grid-template-columns:1fr;padding:10px}
     .stage{flex:0 0 auto;display:flex;flex-direction:column;min-height:0}
-    .floor{position:relative;inset:auto;height:600px;flex:0 0 auto}
+    .floor{position:relative;inset:auto;height:min(600px,118vw);flex:0 0 auto}
     .rail{overflow:visible}
-    .tabs{display:none}
+    .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;order:5;width:100%;margin-left:0;padding:2px 0;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{flex:0 0 auto}
     .stage-overlays{display:flex;flex-direction:column;gap:10px;padding:10px}
     .feed{position:static;width:auto;max-height:190px}
     .minimap{position:static;width:auto}
     .clock{display:none}
     .brand-sub{display:none}
     .topbar{flex-wrap:wrap;row-gap:8px}
-    .search-wrap{order:3;width:100%}
-    .search-input{flex:1;width:auto;font-size:12.5px}
+    .top-right{order:4;width:100%;margin-left:0}
+    .search-wrap{flex:1;min-width:0}
+    .search-input{flex:1;width:auto;min-width:0;font-size:12.5px}
     .strip-note{display:none}
     .connect-btn{margin-left:0}
     .detail{top:auto;bottom:10px;right:10px;left:10px;width:auto;max-height:52%}
-    .lbl-bubble{max-width:128px;font-size:9px}
+    .lbl-bubble{display:none}
+    .lbl-room{display:none}
+    .lbl-cabin small{display:none}
+    .lbl-door{font-size:9.5px;padding:2px 8px}
+    .lbl-door .cnt{display:none}
+    .lbl-lead{display:none}
+  }
+  /* Short landscape (phones held sideways): keep the app shell, shrink the
+     chrome, and give the floor the full remaining height beside the rail —
+     nothing should need page scrolling or browser zoom to be reachable. */
+  @media (orientation:landscape) and (max-height:540px){
+    body{overflow:hidden;height:100dvh}
+    .topbar{flex-wrap:wrap;row-gap:6px;padding:6px 12px;gap:10px}
+    .brand-mark{width:28px;height:28px}
+    .brand-name{font-size:13px}
+    .brand-sub{display:none}
+    .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;order:5;width:100%;margin-left:0;padding:0;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{flex:0 0 auto;padding:5px 10px;font-size:12px}
+    .top-right{width:auto;margin-left:auto}
+    .clock{display:none}
+    .search-wrap{order:0;width:auto}
+    .search-input{width:104px;flex:none;padding:6px 9px;font-size:12.5px}
+    .shift-btn{padding:6px 10px}
+    .strip{padding:6px 12px 0}
+    .strip-note{display:none}
+    .pill{padding:5px 11px;font-size:10.5px}
+    .connect-btn{margin-left:auto;padding:5px 11px}
+    .layout{grid-template-columns:minmax(0,1fr) 296px;gap:10px;padding:8px 10px 10px}
+    .stage{display:flex;flex-direction:column}
+    .floor{position:absolute;inset:0;height:auto;flex:none}
+    .stage-overlays{display:contents}
+    .minimap{position:absolute;left:10px;bottom:10px;width:150px;padding:9px 11px}
+    .mm-grid{display:none}
+    .stat-row .v{font-size:13px}
+    .feed{position:absolute;right:10px;bottom:10px;width:202px;max-height:46%}
+    .rail{overflow-y:auto}
+    .orb{width:48px;height:48px}
+    .detail{top:10px;bottom:auto;right:10px;left:auto;width:290px;max-height:calc(100% - 20px)}
+    .lbl-bubble{display:none}
+    .lbl-room{display:none}
+    .lbl-cabin small{display:none}
     .lbl-door{font-size:9.5px;padding:2px 8px}
     .lbl-door .cnt{display:none}
     .lbl-lead{display:none}
@@ -1326,7 +1370,7 @@ $("shiftToggle").addEventListener("click", function(){
 var floorOK = typeof THREE!=="undefined";
 var teamRT = {}, labels = [], planesAnim = [], subAgents = [];
 var scene, camera, renderer, wrapEl, raycaster;
-var camTheta=0.785, camPhi=0.955, viewSize=54, camTarget=null;
+var camTheta=0.785, camPhi=0.955, viewSize=54, camTarget=null, userMoved=false;
 var hemiLight, dirLight, lampLights=[], dcDotMat, monitorTex, cabinBeacon, directorChar;
 var tintables=[]; /* {mat, day, night} */
 var STATUS_COLORS={ working:"#6E9A72", thinking:"#C98A2B", waiting:"#E8A33D", error:"#C0534A", done:"#6E9A72", idle:"#B9AE97", walking:"#6B8CAE", seated:"#B8923E" };
@@ -1428,9 +1472,13 @@ function focusTeam(teamId){
 }
 function frameAll(){
   if(!camTarget||!wrapEl) return;
+  userMoved=false;
   camTarget.set(0,0,0.5); camTheta=0.785; camPhi=0.955;
   var aspect=(wrapEl.clientWidth||800)/Math.max(1,(wrapEl.clientHeight||500));
-  viewSize=Math.max(54, Math.min(118, 76/aspect));
+  /* Fit the whole projected footprint at the 45° view: ~104 world units
+     across (building + grounds) and ~66 down (floor depth projected +
+     walls + label headroom). Whichever dimension is tighter wins. */
+  viewSize=Math.max(30, Math.min(190, Math.max(66, 104/aspect)));
   updateCamera();
 }
 
@@ -1949,7 +1997,8 @@ function buildScene(){
   sizeRenderer();
   updateCamera();
   bindControls();
-  window.addEventListener("resize", sizeRenderer);
+  window.addEventListener("resize", onViewportChange);
+  window.addEventListener("orientationchange", function(){ setTimeout(onViewportChange, 250); });
   frameAll();
   requestAnimationFrame(animateLoop);
 }
@@ -1958,6 +2007,12 @@ function sizeRenderer(){
   var w=wrapEl.clientWidth||800, h=wrapEl.clientHeight||500;
   renderer.setSize(w,h);
   camera.aspect=w/h; updateCamera();
+}
+function onViewportChange(){
+  sizeRenderer();
+  /* Rotating or resizing re-fits the whole office — unless the user has
+     already panned/zoomed by hand, in which case leave their view alone. */
+  if(!userMoved) frameAll();
 }
 function updateCamera(){
   if(!camera||!camTarget) return;
@@ -1993,10 +2048,11 @@ function bindControls(){
     var dx=e.clientX-pointers[e.pointerId].x, dy=e.clientY-pointers[e.pointerId].y;
     pointers[e.pointerId]={ x:e.clientX, y:e.clientY };
     moved+=Math.abs(dx)+Math.abs(dy);
+    if(moved>7 || Object.keys(pointers).length===2) userMoved=true;
     if(Object.keys(pointers).length===2){
       var ps=Object.values(pointers);
       var nd=Math.hypot(ps[0].x-ps[1].x, ps[0].y-ps[1].y);
-      if(pinchDist>0){ viewSize=Math.max(24, Math.min(96, viewSize*pinchDist/Math.max(20,nd))); updateCamera(); }
+      if(pinchDist>0){ viewSize=Math.max(24, Math.min(190, viewSize*pinchDist/Math.max(20,nd))); updateCamera(); }
       pinchDist=nd; return;
     }
     if(e.buttons===2 || e.altKey || e.shiftKey){
@@ -2022,7 +2078,8 @@ function bindControls(){
   el.addEventListener("pointercancel", function(e){ delete pointers[e.pointerId]; });
   el.addEventListener("wheel", function(e){
     e.preventDefault();
-    viewSize=Math.max(24, Math.min(96, viewSize*(e.deltaY>0?1.09:0.92)));
+    userMoved=true;
+    viewSize=Math.max(24, Math.min(190, viewSize*(e.deltaY>0?1.09:0.92)));
     updateCamera();
   }, { passive:false });
 }
