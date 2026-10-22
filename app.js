@@ -20,7 +20,7 @@ var TEAMS = [
     role:"Edits the raw clips into finished videos.",
     tools:"Google Drive · CapCut · Canva", skills:"rough cuts, captions, thumbnails, hooks",
     model:"Google Gemma 4 31B (free)",
-    agents:[["Vikram","Edit Director",1],["Anaya","Cutter",0],["Neil","Captioner",0],["Riya","Thumbnailer",0],["Arjun","B-roll Editor",0],["Zara","Sound Designer",0]],
+    agents:[["Vikram","Senior Editor",1],["Anaya","Cutter",0],["Neil","Captioner",0],["Riya","Thumbnailer",0],["Arjun","B-roll Editor",0],["Zara","Sound Designer",0]],
     tasks:["Cutting yesterday's raw footage","Burning captions on reel #14","Testing 3 thumbnail concepts","Syncing B-roll to the voiceover"] },
   { id:"social",    name:"Social",    count:4, color:"#E563B8", side:-1, slot:3,
     role:"Posts, schedules and replies across platforms.",
@@ -312,7 +312,7 @@ function runOrder(text){
   var st=$("orderState"); if(st) st.textContent="ON IT — BRIEFING CREATIVE";
   $("orderPanel").classList.add("open"); if(typeof syncScrim==="function") syncScrim();
   if(typeof roomToast==="function") roomToast("creative", "Vikram has your order — briefing the team");
-  feed("creative","text order received from the Director: “"+text+"”");
+  feed("creative","text order received from the CEO: “"+text+"”");
   if(typeof flyPlane==="function"){ flyPlane("cabin","creative"); setTimeout(function(){ flyPlane("dc","creative"); },450); }
   if(typeof teamWalkIn==="function") teamWalkIn("creative");
   if(typeof spawnSubs==="function") spawnSubs();
@@ -440,7 +440,7 @@ function openSheet(tab, focusTeam){
     body.appendChild(grid);
   }
   if(tab==="director"){
-    title.textContent="Director's Cabin";
+    title.textContent="CEO's Cabin";
     sub.textContent="Your seat above the floor: give the order, clear the approvals, see the whole office at a glance.";
     var grid=document.createElement("div"); grid.className="dir-grid";
     [["Agents online", state.online+" / 31", 0],
@@ -523,7 +523,7 @@ function openSheet(tab, focusTeam){
       body.appendChild(wrap);
     });
     var tot=document.createElement("div"); tot.className="kv";
-    tot.innerHTML="<span>Total headcount</span><b>31 agents · 1 Director (you)</b>";
+    tot.innerHTML="<span>Total headcount</span><b>31 agents · 1 CEO (you)</b>";
     body.appendChild(tot);
   }
   if(tab==="calendar"){
@@ -569,7 +569,7 @@ function openSheet(tab, focusTeam){
       body.appendChild(el);
     });
     var boss=document.createElement("div"); boss.className="kv";
-    boss.innerHTML="<span style='font-weight:700'>Director / Boss router</span><b>NVIDIA Nemotron 3 Ultra 550B (free)</b>";
+    boss.innerHTML="<span style='font-weight:700'>CEO / Boss router</span><b>NVIDIA Nemotron 3 Ultra 550B (free)</b>";
     body.appendChild(boss);
   }
   Array.prototype.forEach.call(body.querySelectorAll("[data-chat]"), function(el){
@@ -623,12 +623,12 @@ var detailCtx=null;
 var STATUS_META={
   working:{ label:"WORKING — typing at the desk", color:"#3ED97E" },
   thinking:{ label:"THINKING — hand on chin, weighing options", color:"#F5A623" },
-  waiting:{ label:"WAITING — hand up, needs the Director", color:"#F5A623" },
+  waiting:{ label:"WAITING — hand up, needs the CEO", color:"#F5A623" },
   error:{ label:"ERROR — needs a rework", color:"#FF6B5E" },
   done:{ label:"DONE — shipped", color:"#3ED97E" },
   walking:{ label:"WALKING IN — heading to the desk", color:"#6B8CAE" },
   idle:{ label:"IDLE — leaning back, screensaver on", color:"#7C8DB0" },
-  seated:{ label:"AT DESK — Director's cabin", color:"#B8923E" }
+  seated:{ label:"AT DESK — CEO's cabin", color:"#B8923E" }
 };
 function agentStatus(teamId, idx){
   if(typeof agentStateOf==="function") return agentStateOf(teamId, idx);
@@ -642,11 +642,11 @@ function stepsFor(team, task){
   if(task){
     steps.push({ txt:"Working: "+task.title, done:task.prog>=100, now:task.prog<100 });
     steps.push({ txt:"Self-check against the team's playbook", done:task.prog>=70, now:task.prog>=40&&task.prog<70 });
-    steps.push({ txt:"Hand up — Director's OK to ship", done:false, now:task.prog>=100 });
+    steps.push({ txt:"Hand up — CEO's OK to ship", done:false, now:task.prog>=100 });
   } else if(pendingTeams()[team.id]){
     var pt=state.pending.filter(function(x){return x.team===team.id;})[0];
     steps.push({ txt:"Finished: "+pt.title, done:true });
-    steps.push({ txt:"Hand up — waiting on the Director right now", done:false, now:true });
+    steps.push({ txt:"Hand up — waiting on the CEO right now", done:false, now:true });
   } else {
     steps.push({ txt:"Standing by for the next brief", done:false, now:true });
   }
@@ -750,7 +750,7 @@ function renderTeamDetail(teamId){
     html+='<div class="step done"><span class="box">✓</span><span>'+esc(d.title)+' · '+(d.ts?relTime(d.ts):"")+'</span></div>';
   });
   if(!task && !pend) html+='<div class="empty-note">Nothing in flight — the whiteboard is clear.</div>';
-  html+='<div class="d-sec">ON THE WHITEBOARD</div><div class="step done"><span class="box">✓</span><span>'+(task?esc(task.title):pend?"Finished — waiting for the Director's OK":"Standing by for the next brief")+'</span></div></div>';
+  html+='<div class="d-sec">ON THE WHITEBOARD</div><div class="step done"><span class="box">✓</span><span>'+(task?esc(task.title):pend?"Finished — waiting for the CEO's OK":"Standing by for the next brief")+'</span></div></div>';
 
   /* CALENDAR */
   html+='<div class="dpane" data-pane="calendar"><div class="d-sec">'+team.name.toUpperCase()+' RHYTHM — TODAY</div>'+
@@ -765,7 +765,7 @@ function renderTeamDetail(teamId){
     '<div class="kv"><span>Model</span><b>'+team.model+'</b></div>'+
     '<div class="kv"><span>Tools</span><b>'+team.tools+'</b></div>'+
     '<div class="kv"><span>Text orders</span><b>On — dock + order panel</b></div>'+
-    '<div class="kv"><span>Approvals</span><b>Director OK before shipping</b></div>'+
+    '<div class="kv"><span>Approvals</span><b>CEO OK before shipping</b></div>'+
     '<div class="kv"><span>Data Center</span><b>Reads + writes the note store</b></div></div>';
 
   $("detailBody").innerHTML=html;
@@ -791,8 +791,8 @@ function renderDCDetail(){
     '<div class="d-sec">RIGHT NOW</div>'+stepsHTML([
       { txt:state.running.length+" live tasks being tracked across the floor", done:true },
       { txt:state.doneToday+" finished pieces stored today", done:true },
-      { txt:state.pending.length+" pieces held for the Director's OK", done:false, now:state.pending.length>0 },
-      { txt:"Nightly backup to the Director's cabin", done:false, now:state.pending.length===0 }
+      { txt:state.pending.length+" pieces held for the CEO's OK", done:false, now:state.pending.length>0 },
+      { txt:"Nightly backup to the CEO's cabin", done:false, now:state.pending.length===0 }
     ])+
     '<div class="d-sec">STATS</div>'+officeSummaryRows().map(function(r){ return '<div class="kv"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>'; }).join("");
   $("detailBody").innerHTML=html;
@@ -833,7 +833,7 @@ function openChat(teamId, idx){
   var key=chatKey(teamId, idx);
   if(!chats[key]){
     chats[key]=[];
-    pushChat(key, "agent", "Director — "+a[0]+" here, "+a[1]+" with the "+team.name+" team. Right now I'm "+currentTaskLine(teamId)+". What do you need?");
+    pushChat(key, "agent", "CEO — "+a[0]+" here, "+a[1]+" with the "+team.name+" team. Right now I'm "+currentTaskLine(teamId)+". What do you need?");
   } else renderChatMsgs();
   $("chatPanel").classList.add("open");
   if(typeof syncScrim==="function") syncScrim();
@@ -876,7 +876,7 @@ function agentReplyText(teamId, idx, userText){
   var pt=state.pending.filter(function(x){return x.team===teamId;})[0];
   var latest=(teamLog[teamId]||[])[0];
   if(/(^|\b)(hi|hello|hey)\b/.test(low))
-    return "Hey Director. "+a[0]+" here — I'm "+currentTaskLine(teamId)+". Fire away.";
+    return "Hey CEO. "+a[0]+" here — I'm "+currentTaskLine(teamId)+". Fire away.";
   if(low.indexOf("status")>-1||low.indexOf("doing")>-1||low.indexOf("working on")>-1)
     return "Right now I'm "+currentTaskLine(teamId)+"."+(latest?" Latest from our floor: "+latest.text+".":"");
   if(low.indexOf("when")>-1||low.indexOf("eta")>-1||low.indexOf("how long")>-1)
@@ -884,10 +884,10 @@ function agentReplyText(teamId, idx, userText){
   if(low.indexOf("approve")>-1)
     return pt ? "\u201C"+pt.title+"\u201D is sitting under WAITING FOR YOU on the board — one tap on Approve and we ship it." : "Nothing from the "+team.name+" team is waiting on approval right now.";
   if(low.indexOf("thank")>-1)
-    return "Anytime, Director. That's what the "+team.name+" desk is for.";
+    return "Anytime, CEO. That's what the "+team.name+" desk is for.";
   var pool=[
     "On it. I'll fold that into "+(tk?"\u201C"+tk.title+"\u201D":"my next piece")+" and keep the board updated.",
-    "Copy that, Director. Pulling the context from the Data Center now — I'll report back on the feed.",
+    "Copy that, CEO. Pulling the context from the Data Center now — I'll report back on the feed.",
     "Got it. "+(latest?"Last thing our team logged: "+latest.text+". ":"")+"I'll take it from here.",
     "Understood. If it needs a hand from another team, I'll send a paper plane their way.",
     "Done thinking about it — doing it. Watch the "+team.name+" office, I'm at the desk."
@@ -957,7 +957,7 @@ var floorOK = typeof THREE!=="undefined";
 var teamRT = {}, labels = [], planesAnim = [], subAgents = [];
 var scene, camera, renderer, wrapEl, raycaster;
 var camTheta=0.785, camPhi=0.955, viewSize=54, camTarget=null, userMoved=false;
-var hemiLight, dirLight, lampLights=[], dcDotMat, monitorTex, cabinBeacon, directorChar, dcRing, dcCore, beamMats=[], dcSpin, dcOrbit, beamDots=[], beamBoost={}, wanderers=[], rackFaces=[], rackBlinkAt=0, dcLabelObj=null, cabinLabelObj=null, bayLabelObj=null;
+var hemiLight, dirLight, lampLights=[], dcDotMat, monitorTex, cabinBeacon, directorChar, dcRing, dcCore, beamMats=[], dcSpin, dcOrbit, beamDots=[], beamBoost={}, wanderers=[], rackFaces=[], rackBlinkAt=0, dcLabelObj=null, cabinLabelObj=null, bayLabelObj=null, cabinBeamMat=null, cabinDots=[];
 var tintables=[]; /* {mat, day, night} */
 var STATUS_COLORS={ working:"#3ED97E", thinking:"#F5B53F", waiting:"#F5A623", error:"#FF6B5E", done:"#3ED97E", idle:"#5B6B8C", walking:"#5B9BD5", seated:"#E8C37A" };
 var SKINS=["#F2C29B","#E0AC82","#C68863","#A96B4F","#8A5138"];
@@ -979,7 +979,7 @@ function makeLabel(cls, html, getPos, base){
   labels.push(L); return L;
 }
 var RING_ANG={ research:3.927, scripts:4.712, social:5.498, creative:0, analytics:0.785, community:1.571, design:2.356, publishing:3.142 };
-var CABIN_ANG=0.96, CABIN_R=30;
+var CABIN_ANG=4.36, CABIN_R=35;
 function officeCenter(t){ var a=RING_ANG[t.id]; return { x:21*Math.cos(a), z:21*Math.sin(a) }; }
 function cabinWorld(){ return { x:CABIN_R*Math.cos(CABIN_ANG), z:CABIN_R*Math.sin(CABIN_ANG) }; }
 function anchorPos(teamId){
@@ -1203,7 +1203,7 @@ function drawBoard(rt){
   var task=state.running.filter(function(x){return x.team===rt.def.id;})[0];
   var pend=state.pending.filter(function(x){return x.team===rt.def.id;})[0];
   ctx.fillStyle="#16233F"; ctx.font="600 27px Manrope, sans-serif";
-  var line = task ? task.title : pend ? "Done — waiting for the Director" : "Standing by for the next brief";
+  var line = task ? task.title : pend ? "Done — waiting for the CEO" : "Standing by for the next brief";
   var words=line.split(" "), lines=[], cur="";
   words.forEach(function(w){ if((cur+" "+w).length>30){ lines.push(cur); cur=w; } else cur=cur?cur+" "+w:w; });
   if(cur) lines.push(cur);
@@ -1539,6 +1539,15 @@ function buildScene(){
       var dot=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,8), new THREE.MeshBasicMaterial({ color:new THREE.Color(tm2.color) }));
       scene.add(dot); beamDots.push({ m:dot, team:tm2 });
     });
+    /* CEO link — gold beam from the core out to the cabin, dots running core → CEO */
+    var cbw=cabinWorld();
+    var cbg=new THREE.BufferGeometry().setFromPoints([ new THREE.Vector3(0,3.9,0), new THREE.Vector3(cbw.x,4.4,cbw.z) ]);
+    cabinBeamMat=new THREE.LineBasicMaterial({ color:0xE8C37A, transparent:true, opacity:0.4 });
+    scene.add(new THREE.Line(cbg, cabinBeamMat));
+    for(var cdi=0; cdi<3; cdi++){
+      var cdot=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8), new THREE.MeshBasicMaterial({ color:0xFFD9A0 }));
+      scene.add(cdot); cabinDots.push({ m:cdot, ph:cdi/3 });
+    }
     /* glowing ground trails: ring path + spokes */
     var ringPts=[];
     for(var ti3=0;ti3<=72;ti3++){ var aa=ti3/72*Math.PI*2; ringPts.push(new THREE.Vector3(Math.cos(aa)*21,0.03,Math.sin(aa)*21)); }
@@ -1563,18 +1572,19 @@ function buildScene(){
     pad.rotation.x=-Math.PI/2; pad.receiveShadow=true; bay.add(pad);
     var edge=new THREE.Mesh(new THREE.RingGeometry(2.45,2.68,40), new THREE.MeshBasicMaterial({ color:0x64D8FF, transparent:true, opacity:.55, side:THREE.DoubleSide }));
     edge.rotation.x=-Math.PI/2; edge.position.y=0.02; bay.add(edge);
-    bay.traverse(function(o){ o.userData.pick={ type:"room", name:"Sub-Agent Bay", desc:"Where extra hands spin up on the Director's word — a typed order sends them in three at a time, and they report back when the work is done." }; });
+    bay.traverse(function(o){ o.userData.pick={ type:"room", name:"Sub-Agent Bay", desc:"Where extra hands spin up on the CEO's word — a typed order sends them in three at a time, and they report back when the work is done." }; });
     makeLabel("lbl", '<span class="lbl-bay" id="bayLabel">SUB-AGENT BAY · READY</span>', function(){ return new THREE.Vector3(24.4,1.5,0); });
     bayLabelObj=labels[labels.length-1];
     labels[labels.length-1].el.style.display="";
   })();
 
-  /* ----- Director's cabin island (outer ring, overlooking the floor) ----- */
+  /* ----- CEO's cabin island (back-center, raised above the ring, overlooking the floor) ----- */
   (function(){
     var cw=cabinWorld();
-    var cab=new THREE.Group(); cab.position.set(cw.x,0.55,cw.z); cab.rotation.y=Math.PI/2-CABIN_ANG; scene.add(cab);
+    var cab=new THREE.Group(); cab.position.set(cw.x,1.35,cw.z); cab.rotation.y=Math.PI/2-CABIN_ANG; scene.add(cab);
     var cabGlass=new THREE.MeshStandardMaterial({ color:0xFFD9A0, transparent:true, opacity:.16, roughness:.08, side:THREE.DoubleSide, depthWrite:false });
-    box(9,1.0,12, stdMat(0x2A2118,{roughness:.9}), 0,-0.57,0, cab, false);
+    box(9,1.9,12, stdMat(0x2A2118,{roughness:.9}), 0,-1.02,0, cab, false);
+    box(9.5,0.14,12.5, goldMat, 0,-0.06,0, cab, false);
     var fl3=box(8.4,0.16,11.4, regTint(stdMat(0x8A6538,{roughness:.8}), 0x8A6538, 0x4A3826), 0,0,0, cab, false); fl3.receiveShadow=true;
     var rug=new THREE.Mesh(new THREE.CircleGeometry(2.2,24), regTint(stdMat(0x8A2F2A,{roughness:1}), 0x8A2F2A, 0x571F1C));
     rug.rotation.x=-Math.PI/2; rug.position.set(-0.4,0.1,0); cab.add(rug);
@@ -1591,7 +1601,7 @@ function buildScene(){
     box(1.3,0.12,3.0, darkWoodMat, -0.8,1.0,0, cab);
     box(1.1,0.85,2.8, regTint(stdMat(0x6E4F2C,{roughness:.7}), 0x6E4F2C, 0x402D18), -0.8,0.5,0, cab, false);
     box(0.06,0.66,1.1, stdMat(0x232A3A), -0.75,1.42,-0.9, cab, false);
-    directorChar=makeCharacter("#2A2118", SKINS[1], HAIRS[0], "Director");
+    directorChar=makeCharacter("#2A2118", SKINS[1], HAIRS[0], "CEO");
     directorChar.g.position.set(0.9,0.06,0); directorChar.g.rotation.y=-Math.PI/2;
     cab.add(directorChar.g);
     box(0.5,0.7,0.5, stdMat(0xB98D5F), 3.4,0.35,-4.6, cab, false);
@@ -1602,11 +1612,11 @@ function buildScene(){
     cabinBeacon=new THREE.Mesh(new THREE.SphereGeometry(0.3,12,10), new THREE.MeshBasicMaterial({ color:0xE8A33D }));
     cabinBeacon.position.set(0,3.9,0); cabinBeacon.visible=false; cab.add(cabinBeacon);
     cab.traverse(function(o){ o.userData.pick={ type:"director" }; });
-    makeLabel("lbl", '<span class="lbl-cabin">DIRECTOR<small>THE DIRECTOR\'S CABIN — TAP TO ENTER</small><span class="hand-count" id="cabinHandCount"></span></span>',
-      function(){ return new THREE.Vector3(cw.x+Math.cos(CABIN_ANG)*4.5, 5.9, cw.z+Math.sin(CABIN_ANG)*4.5); });
+    makeLabel("lbl", '<span class="lbl-cabin">CEO<small>THE CEO\'S CABIN — TAP TO ENTER</small><span class="hand-count" id="cabinHandCount"></span></span>',
+      function(){ var pa=CABIN_ANG+0.10, pr=CABIN_R-6.4; return new THREE.Vector3(pr*Math.cos(pa), 7.6, pr*Math.sin(pa)); });
     cabinLabelObj=labels[labels.length-1];
     labels[labels.length-1].el.style.display="";
-    labels[labels.length-1].mobileDy=34;
+    labels[labels.length-1].mobileDy=-50;
   })();
 
   /* camera + controls */
@@ -1861,6 +1871,18 @@ function animateLoop(){
     var c4=officeCenter(d.team), f=(t*0.22+di*0.17)%1;
     d.m.position.set(c4.x*(1-f), 2.6+1.3*f, c4.z*(1-f));
   });
+  if(cabinBeamMat){
+    var cbst=beamBoost.cabin||0;
+    cabinBeamMat.opacity=0.42+0.15*Math.sin(t*2+1.3)+0.5*cbst;
+    beamBoost.cabin=Math.max(0, cbst-dt*0.7);
+  }
+  if(cabinDots.length){
+    var cw4=cabinWorld();
+    cabinDots.forEach(function(d){
+      var f4=(t*0.22+d.ph)%1;
+      d.m.position.set(cw4.x*f4, 3.9+0.5*f4, cw4.z*f4);
+    });
+  }
   updatePlanes(dt);
   updateLabels();
   renderer.render(scene, camera);
