@@ -959,7 +959,7 @@ var scene, camera, renderer, wrapEl, raycaster;
 var camTheta=0.785, camPhi=0.955, viewSize=54, camTarget=null, userMoved=false;
 var hemiLight, dirLight, lampLights=[], dcDotMat, monitorTex, cabinBeacon, directorChar, dcRing, dcCore, beamMats=[], dcSpin, dcOrbit, beamDots=[], beamBoost={}, wanderers=[], rackFaces=[], rackBlinkAt=0, dcLabelObj=null, cabinLabelObj=null, bayLabelObj=null, cabinBeamMat=null, cabinDots=[];
 var tintables=[]; /* {mat, day, night} */
-var STATUS_COLORS={ working:"#3ED97E", thinking:"#F5B53F", waiting:"#F5A623", error:"#FF6B5E", done:"#3ED97E", idle:"#5B6B8C", walking:"#5B9BD5", seated:"#E8C37A" };
+var STATUS_COLORS={ working:"#3ED97E", thinking:"#F5B53F", waiting:"#F5A623", error:"#FF6B5E", done:"#3ED97E", idle:"#5B6B8C", walking:"#5B9BD5", standing:"#8A97B5", seated:"#E8C37A" };
 var SKINS=["#F2C29B","#E0AC82","#C68863","#A96B4F","#8A5138"];
 var HAIRS=["#241A12","#3B2A1A","#101010","#5A3A22","#6E6E6E"];
 
@@ -1044,7 +1044,9 @@ function teamWalkIn(teamId){
   if(!floorOK) return;
   var rt=teamRT[teamId]; if(!rt) return;
   rt.agents.forEach(function(a, i){
-    if(!a.walk) startWalk(a, rt, i*280);
+    /* an agent caught mid-stroll just walks back to its desk — no teleport */
+    if(a.roam){ a.roam.mode="return"; a.roam.pts=pathTo(a, a.home); }
+    else if(!a.walk) startWalk(a, rt, i*280);
   });
 }
 function teamDoneFlash(teamId){ var rt=teamRT[teamId]; if(rt){ rt.doneUntil=performance.now()+2400; rt.doneStart=performance.now(); rt.flashUntil=performance.now()+1200; } }
@@ -1099,6 +1101,74 @@ function updateWalk(a, dt, now){
   }
 }
 
+/* ---------- free-time behaviour: sit idle, get up, stroll, come back ----------
+   Agents only roam while their team has nothing running and nothing waiting.
+   The moment work lands they are recalled to their desk and sit down to type. */
+var ROAM_SPOTS=[[-4.9,3.9],[-2.4,4.3],[0,4.5],[2.4,4.3],[4.9,3.9],[-5.1,0.6],[5.1,0.6],[0,2.5],[-1.7,2.5],[1.7,2.5],[-3.9,2.6],[3.9,2.6]];
+function roamLaneX(x){
+  var lanes=[-5.3,-1.6,1.6,5.3], best=lanes[0], bd=1e9;
+  for(var i=0;i<lanes.length;i++){ var d=Math.abs(lanes[i]-x); if(d<bd){ bd=d; best=lanes[i]; } }
+  return best;
+}
+/* route that keeps feet off the desks: across to a free lane, along it, then in */
+function pathTo(a, dest){
+  var cur=a.g.position, lx=roamLaneX(cur.x), pts=[];
+  if(Math.abs(cur.x-lx)>0.05) pts.push(new THREE.Vector3(lx, 0.06, cur.z));
+  if(pts.length || Math.abs(dest.z-cur.z)>0.05) pts.push(new THREE.Vector3(lx, 0.06, dest.z));
+  pts.push(new THREE.Vector3(dest.x, 0.06, dest.z));
+  return pts;
+}
+function roamPoint(a){
+  var p, guard=0;
+  do { p=pick(ROAM_SPOTS); guard++; }
+  while(guard<8 && Math.abs(p[0]-a.g.position.x)+Math.abs(p[1]-a.g.position.z)<2.5);
+  return new THREE.Vector3(p[0]+(Math.random()*0.8-0.4), 0.06, p[1]+(Math.random()*0.6-0.3));
+}
+function updateRoam(a, teamId, dt, now){
+  var rt=teamRT[teamId]; if(!rt) return;
+  var busy = !!activeTeams()[teamId] || !!pendingTeams()[teamId] || rt.errorUntil>now || rt.doneUntil>now;
+  if(busy){
+    /* work landed (or a hand is up): hold the "get up" urge, recall strollers */
+    a.decideAt=now+2500+Math.random()*4500;
+    if(a.roam && a.roam.mode!=="return"){ a.roam.mode="return"; a.roam.pts=pathTo(a, a.home); }
+  }
+  if(!a.roam){
+    if(busy) return;
+    if(now<(a.decideAt||0)) return;
+    a.decideAt=now+6000+Math.random()*9000;
+    if(Math.random()<0.55) a.roam={ mode:"walk", pts:pathTo(a, roamPoint(a)) };
+    return;
+  }
+  var r=a.roam;
+  if(r.mode==="pause"){
+    if(now>=r.pauseUntil){
+      if(!busy && Math.random()<0.4){ r.mode="walk"; r.pts=pathTo(a, roamPoint(a)); }
+      else { r.mode="return"; r.pts=pathTo(a, a.home); }
+    }
+    return;
+  }
+  if(!r.pts || !r.pts.length){ a.roam=null; return; }
+  var target=r.pts[0];
+  var dx=target.x-a.g.position.x, dz=target.z-a.g.position.z;
+  var dist=Math.sqrt(dx*dx+dz*dz), step=2.6*dt;
+  if(dist<=Math.max(step,0.06)){
+    a.g.position.x=target.x; a.g.position.z=target.z;
+    r.pts.shift();
+    if(!r.pts.length){
+      if(r.mode==="return"){
+        a.roam=null; a.g.position.copy(a.home); a.g.rotation.y=a.homeRotY;
+        a.decideAt=now+5000+Math.random()*8000;
+      } else {
+        r.mode="pause"; r.pauseUntil=now+2400+Math.random()*4200;
+        a.g.rotation.y=Math.atan2(-a.g.position.x, -a.g.position.z);
+      }
+    }
+  } else {
+    a.g.position.x+=dx/dist*step; a.g.position.z+=dz/dist*step;
+    a.g.rotation.y=Math.atan2(dx,dz);
+  }
+}
+
 /* ---------- characters ---------- */
 var torsoGeo=null, headGeo=null, hairGeo=null, armGeo=null;
 function ensureGeos(){
@@ -1147,12 +1217,14 @@ function makeCharacter(colorHex, skin, hair, name){
 }
 function animateCharacter(a, st, t, now){
   var rig=a.rig, head=a.head, armR=a.armR, armL=a.armL;
+  var lr=a.legRate||9;
   rig.rotation.x=0; rig.rotation.z=0; rig.position.y=0;
   head.rotation.set(0,0,0);
-  var seatedPose = st!=="walking";
+  var seatedPose = st!=="walking" && st!=="standing";
   if(a.legL && a.legR){
     if(seatedPose){ a.legL.rotation.x=-1.45; a.legR.rotation.x=-1.45; }
-    else { a.legL.rotation.x=Math.sin(t*9+a.phase)*0.55; a.legR.rotation.x=-Math.sin(t*9+a.phase)*0.55; }
+    else if(st==="standing"){ a.legL.rotation.x=Math.sin(t*1.3+a.phase)*0.05; a.legR.rotation.x=-Math.sin(t*1.3+a.phase)*0.05; }
+    else { a.legL.rotation.x=Math.sin(t*lr+a.phase)*0.55; a.legR.rotation.x=-Math.sin(t*lr+a.phase)*0.55; }
   }
   if(seatedPose) rig.position.y=-0.18 + Math.sin(t*1.6+a.phase)*0.008;
   if(st==="working") rig.rotation.z=Math.sin(t*2.2+a.phase)*0.03;
@@ -1179,9 +1251,15 @@ function animateCharacter(a, st, t, now){
     rig.position.y=-0.18+Math.abs(Math.sin(p*Math.PI))*0.3*(1-p*0.4);
     armR.rotation.z=2.4; armL.rotation.z=-2.4;
   } else if(st==="walking"){
-    rig.position.y=Math.abs(Math.sin(t*9+a.phase))*0.06;
-    armR.rotation.x=Math.sin(t*9+a.phase)*0.55;
-    armL.rotation.x=-Math.sin(t*9+a.phase)*0.55;
+    rig.position.y=Math.abs(Math.sin(t*lr+a.phase))*0.06;
+    armR.rotation.x=Math.sin(t*lr+a.phase)*0.55;
+    armL.rotation.x=-Math.sin(t*lr+a.phase)*0.55;
+  } else if(st==="standing"){
+    /* on their feet between strolls: relaxed arms, breathing sway, looking around */
+    rig.position.y=Math.sin(t*1.7+a.phase)*0.015;
+    armR.rotation.x=-0.14+Math.sin(t*1.7+a.phase)*0.05; armR.rotation.z=0.16;
+    armL.rotation.x=-0.14+Math.cos(t*1.5+a.phase)*0.05; armL.rotation.z=-0.16;
+    head.rotation.y=Math.sin(t*0.33+a.phase)*0.38; head.rotation.x=0.03;
   } else if(st==="seated"){
     armR.rotation.x=-1.0+Math.sin(t*8+a.phase)*0.1;
     armL.rotation.x=-1.0+Math.cos(t*7.4+a.phase)*0.1;
@@ -1415,6 +1493,7 @@ function buildScene(){
       ch.home=home; ch.homeRotY=0;
       ch.g.position.copy(home); ch.g.rotation.y=0;
       ch.doneRef=0;
+      ch.roam=null; ch.decideAt=performance.now()+5000+Math.random()*15000;
       grp.add(ch.g);
       ch.g.traverse(function(o){ o.userData.pick={ type:"agent", teamId:t.id, idx:idx }; });
       rt.agents.push(ch);
@@ -1833,7 +1912,10 @@ function animateLoop(){
     var rt=teamRT[tm.id]; if(!rt) return;
     rt.agents.forEach(function(a, idx){
       if(a.walk) updateWalk(a, dt, now);
+      else updateRoam(a, tm.id, dt, now);
       var st=agentStateOf(tm.id, idx);
+      if(a.roam) st = a.roam.mode==="pause" ? "standing" : "walking";
+      a.legRate = a.roam ? 6 : 9;
       if(st==="done") a.doneRef=rt.doneStart;
       animateCharacter(a, st, t, now);
       if(a.dotMat) a.dotMat.color.set(STATUS_COLORS[st]||"#5B6B8C");
